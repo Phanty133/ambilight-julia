@@ -1,5 +1,5 @@
 # ambilight-julia
-A Philips Ambilight knockoff implemented in Julia + Arduino
+A Philips Ambilight knockoff implemented in Julia + Arduino. Colors for each LED/sector are calculated with a weighted arithmentic mean, where the weight is the saturation of the pixel.
 
 ## Software:
 Two processing algorithms are available:
