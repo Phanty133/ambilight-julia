@@ -20,11 +20,6 @@ module Processing
 		Led.sendFrame(colors)
 	end
 
-	function updateCPU()  # 900ish ms frame time
-		colors = Screen.processScreenCPU()
-		Led.sendFrame(colors)
-	end
-
 	function update() # 35ish ms frame time
 		screen = Screen.grabScreen()
 		areas = [ Screen.getAreaFromData(screen, i) for i in 1:4 ]

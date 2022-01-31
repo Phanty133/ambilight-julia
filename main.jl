@@ -19,5 +19,5 @@ samples = 0
 frameTimes = Array{Float64, 1}(undef, 1)
 
 while true
-	@btime Processing.updateCPU()
+	@btime Processing.updateGPU()
 end

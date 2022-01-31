@@ -142,69 +142,6 @@ module Screen
 
 	# CPU
 
-	function processScreenCPU()
-		raw = sct.grab(sct.monitors[monitorNr]).raw
-		output = zeros(Float32, totalSectors)
-
-		Threads.@threads for i in 1:(monitorSize[1] * monitorSize[2] - 1)
-			channelIndex = i * 4
-			b = raw[channelIndex]
-			g = raw[channelIndex + 1]
-			r = raw[channelIndex + 2]
-
-			cMax = max(r, g, b)
-
-			if (cMax == 0)
-				continue
-			end
-
-			col = i % monitorSize[2]
-			row = floor(i / monitorSize[2])
-			sector = 0
-
-			if (row < gpuOpts[2])
-				sector = floor(col / gpuOpts[6])
-			elseif (row >= gpuOpts[3])
-				sector = gpuOpts[13] - floor(col / gpuOpts[8]) + gpuOpts[11]
-			elseif (col < gpuOpts[4])
-				sector = gpuOpts[14] - floor((row - gpuOpts[2]) / gpuOpts[9]) + gpuOpts[12]
-			elseif (col >= gpuOpts[5])
-				sector = floor((row - gpuOpts[2]) / gpuOpts[7]) + gpuOpts[10]
-			else
-				continue
-			end
-
-			cMin = min(r, g, b)
-			sat = (cMax - cMin) / cMax
-			offset = trunc(Int, (sector + 1) * 4)
-
-			output[offset] += r * sat
-			output[offset + 1] += g * sat
-			output[offset + 2] += b * sat
-			output[offset + 3] += sat
-		end
-
-		avgColors = Vector{RGB}()
-
-		for i in 1:4:size(output, 1)
-			sat = output[i + 3]
-
-			if (sat == 0)
-				continue
-			end
-
-			color = UInt8.((
-				round(Int, output[i] / sat),
-				round(Int, output[i + 1] / sat),
-				round(Int, output[i + 2] / sat)
-			))
-
-			push!(avgColors, color)
-		end
-
-		return avgColors
-	end
-
 	function getAreaFromData(data, area)
 		minRow = areas[area]["top"] + 1
 		maxRow = areas[area]["top"] + areas[area]["height"]
