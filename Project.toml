@@ -1,0 +1,7 @@
+[deps]
+AMDGPU = "21141c5a-9bdb-4563-92ae-f87d6854732e"
+Adapt = "79e6a3ab-5dfb-504d-930d-738a2a938a0e"
+BenchmarkTools = "6e4b80f9-dd63-53aa-95a3-0cdb28fa8baf"
+GPUArrays = "0c68f7d7-f131-5f86-a1c3-88cf8149b2d7"
+OpenCL = "08131aa3-fb12-5dee-8b74-c09406e224a2"
+PyCall = "438e738f-606a-5dbb-bf0a-cddfbfd45ab0"
