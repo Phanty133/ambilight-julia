@@ -14,6 +14,7 @@ module Screen
 	monitorNr = 1
 	sectorCount = Array{Int32}(undef, 4) # top, right, bottom, left
 	totalSectors = 0
+	minNonblack = 0
 
 	monitorSize = [0, 0]
 	areas = []
@@ -24,11 +25,12 @@ module Screen
 	p = cl.Program(ctx, source=kernel) |> cl.build!
 	k = cl.Kernel(p, "avg")
 
-	function configScreenGrab(monitor, height, sectors)
+	function configScreenGrab(monitor, height, sectors, minNonblackPixels=100)
 		global checkHeight = height
 		global monitorNr = monitor
 		global sectorCount = sectors
 		global totalSectors = sum(sectorCount)
+		global minNonblack = minNonblackPixels
 
 		# CPU Processing stuff
 		global monitorSize = [ sct.monitors[monitorNr]["height"], sct.monitors[monitorNr]["width"] ]
@@ -58,7 +60,7 @@ module Screen
 			sectorCount[4], # Sector left count
 			20 # Black threshold
 		])
-		global gpuSectorZeros = zeros(Int32, totalSectors * 4)
+		global gpuSectorZeros = zeros(Int32, totalSectors * 5)
 	end
 
 	# GPU
@@ -75,10 +77,12 @@ module Screen
 		
 		avgColors = Vector{RGB}()
 
-		for i in 1:4:size(r, 1)
+		for i in 1:5:size(r, 1)
 			sat = r[i + 3]
 
-			if (sat == 0)
+			if r[i + 4] < minNonblack
+				color = (0,0,0)
+			elseif (sat == 0)
 				color = (0,0,0)
 			else
 				color = UInt8.((

@@ -33,8 +33,6 @@ module Led
 	end
 
 	function sendFrame(data::Vector{RGB})
-		ucData = Array{UInt8}(undef, size(data, 1))
-
 		for i in 1:size(data, 1)
 			p = data[i]
 
@@ -42,15 +40,11 @@ module Led
 				if (isColorSimilar(p, previousFrame[i]))
 					continue
 				end
-			else
-				println("uhndef")
 			end
-			# append!(ucData, UInt8.([i - 1, p[1], p[2], p[3]]))
+
 			uc.write(UInt8.([i - 1, p[1], p[2], p[3]]))
 		end
 
-		# append!(ucData, 0xFF)
-		# uc.write(ucData)
 		uc.write([0xFF])
 		global previousFrame = data
 	end
