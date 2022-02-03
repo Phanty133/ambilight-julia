@@ -9,7 +9,7 @@ import .Screen
 import .Led
 
 checkHeight = 100
-sectorCount = [22, 12, 22, 12] # Top, Right, Bottom, Left
+sectorCount = [22, 12, 21, 13] # Top, Right, Bottom, Left
 serial = "/dev/ttyACM0"
 monitor = 2
 

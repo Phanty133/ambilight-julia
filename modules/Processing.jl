@@ -13,6 +13,7 @@ module Processing
 	function init(monitorNr::Number, checkHeight::Number, sectorCount::Vector{Int64}, serial::String)
 		Screen.configScreenGrab(monitorNr, checkHeight, sectorCount)
 		Led.initSerial(serial, sectorCount)
+		Led.clearFrame()
 	end
 
 	function updateGPU()  # 8ish ms frame time

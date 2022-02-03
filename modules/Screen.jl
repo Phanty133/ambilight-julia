@@ -20,54 +20,7 @@ module Screen
 
 	gpuOpts = Vector{Int32}()
 	device, ctx, queue = cl.create_compute_context()
-	kernel = "
-		#define ITER 4
-
-		__kernel void avg(__global const int *opts,
-						  __global const uchar *raw,
-						  __global int *out)
-		{
-			int gid = get_global_id(0);
-			int pixelIndex = gid + 1;
-			int channelIndex = gid * ITER;
-		
-			uchar b = raw[channelIndex];
-			uchar g = raw[channelIndex + 1];
-			uchar r = raw[channelIndex + 2];
-			int cMax = max(max(b, g), r);
-		
-			if (cMax == 0) { // Skip black pixels
-				return;
-			}
-		
-			int col = pixelIndex % opts[0];
-			int row = floor((float)pixelIndex / opts[0]);
-			int sector = 0;
-		
-			if (row < opts[2]) { // Top area
-				sector = floor((float)col / opts[6]);
-			} else if (row >= opts[3]) { // Bottom area
-				sector = opts[13] - floor((float)col / opts[8]) + opts[11];
-			} else if (col < opts[4]) { // Left area
-				sector = opts[14] - floor((float)(row - opts[2]) / opts[9]) + opts[12];
-			} else if (col >= opts[5]) { // Right area
-				sector = floor((float)(row - opts[2]) / opts[7]) + opts[10];
-			} else {
-				return;
-			}
-
-			int cMin = min(min(b, g), r);
-			int sat = ((cMax - cMin) / (float)cMax) * 100;
-			int offset = sector * 4;
-
-			// atom_add(&out[offset], 1);
-			atom_add(&out[offset], r * sat);
-			atom_add(&out[offset + 1], g * sat);
-			atom_add(&out[offset + 2], b * sat);
-			atom_add(&out[offset + 3], sat);
-		}
-	"
-
+	kernel = read("./kernel.c", String)
 	p = cl.Program(ctx, source=kernel) |> cl.build!
 	k = cl.Kernel(p, "avg")
 
@@ -88,21 +41,22 @@ module Screen
 
 		# GPU Processing stuff
 		global gpuOpts = Vector{Int32}([
-			monitorSize[2],
-			monitorSize[1],
-			checkHeight,
-			monitorSize[1] - checkHeight,
-			checkHeight,
-			monitorSize[2] - checkHeight,
-			Int32(floor(monitorSize[2] / sectorCount[1])),
-			Int32(floor((monitorSize[1] - 2 * checkHeight) / sectorCount[2])),
-			Int32(floor(monitorSize[2] / sectorCount[3])),
-			Int32(floor((monitorSize[1] - 2 * checkHeight) / sectorCount[4])),
-			sectorCount[1],
-			sum(sectorCount[1:2]),
-			sum(sectorCount[1:3]),
-			sectorCount[3],
-			sectorCount[4]
+			monitorSize[2], # Screen width
+			monitorSize[1], # Screen height
+			checkHeight, # Ignore min vertical
+			monitorSize[1] - checkHeight, # Ignore max vertical
+			checkHeight, # Ignore min horizontal
+			monitorSize[2] - checkHeight, # Ignore max horizontal
+			Int32(floor(monitorSize[2] / sectorCount[1])), # Sector width top
+			Int32(floor((monitorSize[1] - 2 * checkHeight) / sectorCount[2])), # Sector heigh right
+			Int32(floor(monitorSize[2] / sectorCount[3])), # Sector width bottom
+			Int32(floor((monitorSize[1] - 2 * checkHeight) / sectorCount[4])), # Sector height left
+			sectorCount[1], # Sector offset right
+			sum(sectorCount[1:2]), # Sector offset bottom
+			sum(sectorCount[1:3]), # Sector offset left
+			sectorCount[3], # Sector bottom count
+			sectorCount[4], # Sector left count
+			20 # Black threshold
 		])
 		global gpuSectorZeros = zeros(Int32, totalSectors * 4)
 	end
@@ -125,14 +79,14 @@ module Screen
 			sat = r[i + 3]
 
 			if (sat == 0)
-				continue
+				color = (0,0,0)
+			else
+				color = UInt8.((
+					round(Int, r[i] / sat),
+					round(Int, r[i + 1] / sat),
+					round(Int, r[i + 2] / sat)
+				))
 			end
-
-			color = UInt8.((
-				round(Int, r[i] / sat),
-				round(Int, r[i + 1] / sat),
-				round(Int, r[i + 2] / sat)
-			))
 
 			push!(avgColors, color)
 		end

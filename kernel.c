@@ -14,7 +14,8 @@
 // 12: Sector offset left
 // 13: Sector bottom count
 // 14: Sector left count
-	
+// 15: Black threshold	
+
 // raw
 // B G R A * W * H
 
@@ -28,30 +29,33 @@ __kernel void avg(__global const int *opts,
 				  __global int *out)
 {
 	int gid = get_global_id(0);
-	int pixelIndex = gid + 1;
 	int channelIndex = gid * ITER;
-	
+		
 	uchar b = raw[channelIndex];
 	uchar g = raw[channelIndex + 1];
 	uchar r = raw[channelIndex + 2];
 	int cMax = max(max(b, g), r);
 		
-	if (cMax == 0) { // Skip black pixels
+	if (cMax <= opts[15]) { // Skip black pixels
 		return;
 	}
-
-	int col = pixelIndex % opts[0];
-	int row = floor((float)pixelIndex / opts[0]);
-	int sector = 0;
 		
+	int col = gid % opts[0];
+	int row = floor((float)gid / opts[0]);
+	int sector = 0;
+
 	if (row < opts[2]) { // Top area
+		// sector = floor(col / sector width top)
 		sector = floor((float)col / opts[6]);
 	} else if (row >= opts[3]) { // Bottom area
+		// sector = sector bottom count - floor(col / width) + offset bottom
 		sector = opts[13] - floor((float)col / opts[8]) + opts[11];
-	} else if (col < opts[4]) { // Left area
-		sector = opts[14] - floor((float)(row - opts[2]) / opts[9]) + opts[12];
 	} else if (col >= opts[5]) { // Right area
+		// sector = floor((row - ignore min vertical) / height right) + offset right
 		sector = floor((float)(row - opts[2]) / opts[7]) + opts[10];
+	} else if (col < opts[4]) { // Left area
+		// sector = left count - floor((row - ignore min vertical) / height left) + offset left
+		sector = opts[14] - floor((float)(row - opts[2]) / opts[9]) + opts[12];
 	} else {
 		return;
 	}

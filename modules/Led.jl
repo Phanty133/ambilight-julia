@@ -9,7 +9,7 @@ module Led
 	serial = pyimport("serial")
 	sectorCount = Array{Int32}(undef, 4)
 	ledOffsets = Array{Int32}(undef, 4)
-	previousFrame = Vector{RGB}(undef, 1)
+	previousFrame = undef
 	colorThreshold = 5
 	ledCount = 0
 
@@ -21,9 +21,6 @@ module Led
 		for i in 1:4
 			ledOffsets[i] = sum(sectorCount[2:i])
 		end
-
-		defaultColor::RGB = (0, 0, 0)
-		global previousFrame = fill(defaultColor, ledCount)
 	end
 
 	function clearFrame()
@@ -32,6 +29,7 @@ module Led
 		end
 
 		uc.write([0xFF])
+		global previousFrame = fill((0xFF, 0xFF, 0xFF), ledCount)
 	end
 
 	function sendFrame(data::Vector{RGB})
@@ -40,12 +38,13 @@ module Led
 		for i in 1:size(data, 1)
 			p = data[i]
 
-			if (i <= size(previousFrame, 1))
+			if (previousFrame != undef)
 				if (isColorSimilar(p, previousFrame[i]))
 					continue
 				end
+			else
+				println("uhndef")
 			end
-
 			# append!(ucData, UInt8.([i - 1, p[1], p[2], p[3]]))
 			uc.write(UInt8.([i - 1, p[1], p[2], p[3]]))
 		end
@@ -56,10 +55,12 @@ module Led
 		global previousFrame = data
 	end
 
-	function isColorSimilar(a::RGB, b::RGB)
-		return !(abs(a[1] - b[1]) > colorThreshold
-		|| abs(a[2] - b[2]) > colorThreshold
-		|| abs(a[3] - b[3]) > colorThreshold)
+	function isColorSimilar(a::RGB, b::RGB, threshold = 5)
+		return (
+		   abs(convert(Int32, a[1]) - b[1]) <= threshold
+		&& abs(convert(Int32, a[2]) - b[2]) <= threshold
+		&& abs(convert(Int32, a[3]) - b[3]) <= threshold
+		)
 	end
 
 	export sendFrame, initSerial
