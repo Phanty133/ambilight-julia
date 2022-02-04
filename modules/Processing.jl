@@ -5,6 +5,7 @@ module Processing
 	include("./Led.jl")
 	include("./Types.jl")
 
+	using BenchmarkTools
 	using .Screen
 	using .Led
 	using .Types
@@ -36,7 +37,7 @@ module Processing
 		while true
 			start = time()
 
-			prevFrame = update_frame(config, prevFrame)
+			prevFrame = update_frame(config)
 
 			push!(frameTimes, time() - start)
 

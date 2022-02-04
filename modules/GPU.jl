@@ -1,3 +1,5 @@
+__precompile__()
+
 module GPU
 	using OpenCL
 
@@ -46,7 +48,7 @@ module GPU
 	end
 
 	function process_data(context::GPUContext, opts::GPUOpts, data::Array{UInt8, 1})
-		zerosArr = zeros(Int32, opts.sector_total * 5)
+		zerosArr = zeros(Int32, opts.sector_total * 4)
 
 		opts_buff = cl.Buffer(GPUOpts, context.ctx, (:r, :copy), hostbuf=[opts])
 		raw_buff = cl.Buffer(UInt8, context.ctx, (:r, :copy), hostbuf=data)

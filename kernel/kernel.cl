@@ -56,12 +56,11 @@ __kernel void avg(__global const opts *opts,
 
 	int cMin = min(min(b, g), r);
 	int sat = ((cMax - cMin) / (float)cMax) * 100;
-	int offset = sector * 5;
+	int offset = sector * 4;
 
 	// atom_add(&out[offset], 1);
 	atom_add(&out[offset], r * sat);
 	atom_add(&out[offset + 1], g * sat);
 	atom_add(&out[offset + 2], b * sat);
-	atom_add(&out[offset + 3], sat);
-	atom_add(&out[offset + 4], 1);	
+	atom_add(&out[offset + 3], sat);	
 }
