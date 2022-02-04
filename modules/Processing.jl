@@ -1,45 +1,56 @@
 __precompile__()
 
 module Processing
-	include("Screen.jl")
-	include("Calc.jl")
-	include("Led.jl")
+	include("./Screen.jl")
+	include("./Led.jl")
+	include("./Types.jl")
 
-	using Base.Iterators
-	using BenchmarkTools
-	import .Screen
-	import .Led
+	using .Screen
+	using .Led
+	using .Types
 
-	function init(monitorNr::Number, checkHeight::Number, sectorCount::Vector{Int64}, serial::String)
-		Screen.configScreenGrab(monitorNr, checkHeight, sectorCount)
-		Led.initSerial(serial, sectorCount)
-		Led.clearFrame()
+	struct ProcessingConfig
+		screenConfig::ScreenConfig
+		ledConfig::LedConfig
 	end
 
-	function updateGPU()  # 8ish ms frame time
-		colors = Screen.processScreenGPU()
-		Led.sendFrame(colors)
+	function init_processing(monitorNr::Int, checkHeight::Int, sectorCount::Vector{Int}, serial::String)
+		scrConfig = config_screen(monitorNr, checkHeight, sectorCount)
+		ledConfig = init_serial(serial, sectorCount)
+		clear_frame(ledConfig)
+
+		return ProcessingConfig(scrConfig, ledConfig)
 	end
 
-	function update() # 35ish ms frame time
-		screen = Screen.grabScreen()
-		areas = [ Screen.getAreaFromData(screen, i) for i in 1:4 ]
-		sectors = [ Screen.getSectorsFromArea(areas[i], i) for i in 1:4 ]
+	function update_frame(config::ProcessingConfig, prevFrame = Vector{RGB}())::Vector{RGB}
+		frameData = process_screen_gpu(config.screenConfig)
+		send_frame(config.ledConfig, frameData, prevFrame)
+	end
 
-		# Reverse bottom and right as the LEDs go in the opposite direction of the sector numbering
-		reverse!(sectors[3])
-		reverse!(sectors[4])
+	function start_processing(config::ProcessingConfig, maxFps::Int)
+		prevFrame = Vector{RGB}()
+		frameTimes = Vector{Float32}()
+		maxFrametime = 1 / maxFps
+		avgTime = 0
 
-		sectorsFlat = reduce(vcat, sectors)
+		while true
+			start = time()
 
-		colors = Array{Tuple{UInt8, UInt8, UInt8}}(undef, size(sectorsFlat, 1))
+			prevFrame = update_frame(config, prevFrame)
 
-		Threads.@threads for i = 1:size(sectorsFlat, 1)
-			colors[i] = Calc.averageColor(sectorsFlat[i])
+			push!(frameTimes, time() - start)
+
+			if (length(frameTimes) >= 10)
+				deleteat!(frameTimes, 1)
+			end
+
+			avgTime = sum(frameTimes) / size(frameTimes, 1)
+
+			if (avgTime < maxFrametime)
+				sleep(maxFrametime - avgTime)
+			end
 		end
-
-		Led.sendFrame(colors)
 	end
 
-	export update, updateGPU
+	export init_processing, start_processing
 end

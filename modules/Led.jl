@@ -1,52 +1,60 @@
 __precompile__()
 
 module Led
-	include("Types.jl")
+	include("./Types.jl")
 
 	using PyCall
 	using .Types
 
-	serial = pyimport("serial")
-	sectorCount = Array{Int32}(undef, 4)
-	ledOffsets = Array{Int32}(undef, 4)
-	previousFrame = undef
-	colorThreshold = 5
-	ledCount = 0
+	struct LedConfig
+		uc::PyObject
+		sectors::Vector{Int}
+		ledCount::Int
+		ledOffsets::Vector{Int}
+		colorSimilarityThreshold::Int
+	end
 
-	function initSerial(port, sectors)
-		global uc = serial.Serial(port, 115200, timeout=0.2)
-		global sectorCount = sectors
-		global ledCount = sum(sectorCount)
+	function init_serial(port, sectors, colorSimilarityThreshold = 5)
+		uc = pyimport("serial").Serial(port, 115200, timeout=0.2)
+		ledOffsets = Array{Int}(undef, 4)
 
 		for i in 1:4
-			ledOffsets[i] = sum(sectorCount[2:i])
-		end
-	end
-
-	function clearFrame()
-		for i in 1:ledCount
-			uc.write([UInt8(i), 0xFF, 0xFF, 0xFF])
+			ledOffsets[i] = sum(sectors[2:i])
 		end
 
-		uc.write([0xFF])
-		global previousFrame = fill((0xFF, 0xFF, 0xFF), ledCount)
+		return LedConfig(
+			uc,
+			sectors,
+			sum(sectors),
+			ledOffsets,
+			colorSimilarityThreshold
+		)
 	end
 
-	function sendFrame(data::Vector{RGB})
+	function clear_frame(config::LedConfig)::Vector{RGB}
+		for i in 1:config.ledCount
+			config.uc.write([UInt8(i), 0xFF, 0xFF, 0xFF])
+		end
+
+		config.uc.write([0xFF])
+		return fill((0xFF, 0xFF, 0xFF), config.ledCount)
+	end
+
+	function send_frame(config::LedConfig, data::Vector{RGB}, previousFrame=Vector{RGB}())::Vector{RGB}
 		for i in 1:size(data, 1)
 			p = data[i]
 
-			if (previousFrame != undef)
-				if (isColorSimilar(p, previousFrame[i]))
+			if (length(previousFrame) >= i)
+				if (isColorSimilar(p, previousFrame[i], config.colorSimilarityThreshold))
 					continue
 				end
 			end
 
-			uc.write(UInt8.([i - 1, p[1], p[2], p[3]]))
+			config.uc.write(UInt8.([i - 1, p[1], p[2], p[3]]))
 		end
 
-		uc.write([0xFF])
-		global previousFrame = data
+		config.uc.write([0xFF])
+		return data
 	end
 
 	function isColorSimilar(a::RGB, b::RGB, threshold = 5)
@@ -57,5 +65,5 @@ module Led
 		)
 	end
 
-	export sendFrame, initSerial
+	export init_serial, clear_frame, send_frame, LedConfig
 end
